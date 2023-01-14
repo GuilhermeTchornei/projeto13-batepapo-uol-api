@@ -16,7 +16,8 @@ try
     await mongoClient.connect();
     console.log("banco conectado");
 }
-catch(err) {
+catch (err)
+{
     console.log(err);
 }
 
@@ -29,9 +30,18 @@ app.post("/participants", async (req, res) => {
         const { name } = req.body;
         const users = await db.collection("participants").findOne({ name });
         if (users) return res.status(409).send("usuário já cadastrado");
+
         await db.collection("participants").insertOne({
             name: name,
             lastStatus: Date.now()
+        });
+
+        await db.collection("messages").insertOne({
+            from: name,
+            to: 'Todos',
+            text: "entra na sala...",
+            type: 'status',
+            time: dayjs().format("hh:mm:ss")
         });
         res.sendStatus(201);
     }
@@ -75,6 +85,7 @@ app.get("/messages", async (req, res) => {
         const messages = await db.collection("messages").find({
             $or: [
                 { type: 'public' },
+                { type: 'status' },
                 { type: "private_message", from },
                 { type: "private_message", to: from }
             ]
@@ -88,7 +99,8 @@ app.get("/messages", async (req, res) => {
 });
 
 app.post("/status", async (req, res) => {
-    try {
+    try
+    {
         const name = req.headers.user;
         if (await db.collection("participants").findOne({ name }))
         {
@@ -99,10 +111,36 @@ app.post("/status", async (req, res) => {
         {
             res.sendStatus(404);
         }
-    } catch (err) {
+    } catch (err)
+    {
         res.send(err);
     }
-})
+});
+
+setInterval(async () => {
+    try
+    {
+        const participants = await db.collection("participants").find().toArray();
+        const afkParticipants = participants.filter((p) => {
+            if (p.lastStatus < Date.now() - 10000)
+            {
+                db.collection("messages").insertOne({
+                    from: p.name,
+                    to: 'Todos',
+                    text: "sai da sala...",
+                    type: 'status',
+                    time: dayjs().format("hh:mm:ss")
+                });
+                return p;
+            }
+            else return null;
+        }).map(p => p.name);
+        await db.collection("participants").deleteMany({ name: { $in: afkParticipants } });
+    } catch (err)
+    {
+        console.log(err);
+    }
+}, 15000);
 
 
 app.listen(5000, () => console.log("servidor conectado"));
