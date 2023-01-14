@@ -67,7 +67,8 @@ app.post("/messages", async (req, res) => {
 });
 
 app.get("/messages", async (req, res) => {
-    try {
+    try
+    {
         const limit = parseInt(req.query.limit) || 0;
         const from = req.headers.user;
 
@@ -80,6 +81,24 @@ app.get("/messages", async (req, res) => {
         }).toArray();
 
         res.send(messages.slice(-limit));
+    } catch (err)
+    {
+        res.send(err);
+    }
+});
+
+app.post("/status", async (req, res) => {
+    try {
+        const name = req.headers.user;
+        if (await db.collection("participants").findOne({ name }))
+        {
+            await db.collection("participants").updateOne({ name }, { $set: { lastStatus: Date.now() } });
+            res.sendStatus(200);
+        }
+        else
+        {
+            res.sendStatus(404);
+        }
     } catch (err) {
         res.send(err);
     }
