@@ -87,15 +87,17 @@ app.post("/messages", async (req, res) => {
         res.sendStatus(201);
     } catch (err)
     {
-        return res.send(err.message);
+        return res.status(422).send(err.message);
     }
 });
 
 app.get("/messages", async (req, res) => {
     try
     {
-        const limit = parseInt(req.query.limit) || 0;
+        const limit = parseInt(req.query.limit);
         const from = req.headers.user;
+
+        if (isNaN(limit) || limit < 0) return res.sendStatus(422);
 
         const messages = await db.collection("messages").find({
             $or: [
@@ -106,10 +108,10 @@ app.get("/messages", async (req, res) => {
             ]
         }).toArray();
 
-        res.send(messages.slice(-limit));
+        res.send(messages.slice(-limit).reverse());
     } catch (err)
     {
-        res.send(err);
+        res.status(500).send(err);
     }
 });
 
