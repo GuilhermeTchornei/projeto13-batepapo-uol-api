@@ -94,10 +94,17 @@ app.post("/messages", async (req, res) => {
 app.get("/messages", async (req, res) => {
     try
     {
-        const limit = parseInt(req.query.limit || 0);
         const from = req.headers.user;
-
-        if (isNaN(limit) || limit < 0) return res.sendStatus(422);
+        let limit = req.query.limit;
+        console.log(limit);
+        if (limit === undefined)
+        {
+            limit = 0;
+        }
+        else
+        {
+            if (isNaN(limit) || limit <= 0) return res.sendStatus(422);
+        }
 
         const messages = await db.collection("messages").find({
             $or: [
@@ -111,6 +118,7 @@ app.get("/messages", async (req, res) => {
         res.send(messages.slice(-limit).reverse());
     } catch (err)
     {
+        console.log(err)
         res.status(500).send(err);
     }
 });
